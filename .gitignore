@@ -1,0 +1,17 @@
+# secrets and local state
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+.data/
+# python
+.venv/
+__pycache__/
+.pytest_cache/
+# node / next
+node_modules/
+.next/
+# OS / editor
+.DS_Store
+*.tsbuildinfo
