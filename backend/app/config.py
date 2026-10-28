@@ -34,7 +34,7 @@ class Settings:
     livekit_api_key: str = field(default_factory=lambda: _env("LIVEKIT_API_KEY"))
     livekit_api_secret: str = field(default_factory=lambda: _env("LIVEKIT_API_SECRET"))
 
-    allowed_origins: tuple = field(default_factory=lambda: tuple(o for o in _env("ALLOWED_ORIGINS", "http://localhost:3000").split(",") if o))
+    allowed_origins: tuple = field(default_factory=lambda: tuple(o for o in _env("ALLOWED_ORIGINS", "*").split(",") if o))
 
     local_db: Path = field(default_factory=lambda: Path(_env("LOCAL_DB", str(ROOT / "backend" / ".data" / "tara.db"))))
 
