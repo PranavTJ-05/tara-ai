@@ -1,0 +1,40 @@
+services:
+  # ── 1. Tara Backend (FastAPI + LiveKit Voice Agent) ──
+  - type: web
+    name: tara-backend
+    runtime: python
+    rootDir: backend
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "bash start.sh"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: ALLOWED_ORIGINS
+        value: "*"
+      - key: GROQ_API_KEY
+        sync: false
+      - key: LIVEKIT_URL
+        sync: false
+      - key: LIVEKIT_API_KEY
+        sync: false
+      - key: LIVEKIT_API_SECRET
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+
+  # ── 2. Tara Frontend (Next.js Chat UI + Embed Widget) ──
+  - type: web
+    name: tara-frontend
+    runtime: node
+    rootDir: frontend
+    buildCommand: "npm install -g pnpm && pnpm install && pnpm build"
+    startCommand: "pnpm start"
+    envVars:
+      - key: NODE_VERSION
+        value: 20.18.0
+      - key: EMBED_ANCESTORS
+        value: "*"
+      - key: NEXT_PUBLIC_API_URL
+        sync: false # Set this to your deployed backend URL (e.g. https://tara-backend.onrender.com)
