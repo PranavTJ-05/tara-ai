@@ -54,4 +54,13 @@ async def entrypoint(ctx: JobContext):
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    cli.run_app(WorkerOptions(entrypoint_fnc=entrypoint))
+    # num_idle_processes=0 avoids pre-forking 4 heavy processes on low-memory hosts (e.g. Render free tier)
+    # port=0 avoids binding fixed port 8081 which hijacks Render's HTTP reverse proxy
+    cli.run_app(
+        WorkerOptions(
+            entrypoint_fnc=entrypoint,
+            num_idle_processes=0,
+            port=0,
+            load_threshold=1.0,
+        )
+    )

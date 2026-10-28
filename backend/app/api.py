@@ -36,6 +36,11 @@ class ChatIn(BaseModel):
     message: str = Field(max_length=4000)
 
 
+@app.get("/")
+def root():
+    return {"status": "ok", "message": "Tara AI Assistant API is running", "docs": "/docs", "health": "/health"}
+
+
 @app.get("/config")
 def config():
     kb = pipeline.get_knowledge()
