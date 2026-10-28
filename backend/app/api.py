@@ -61,8 +61,8 @@ def chat(body: ChatIn):
 
 
 @app.get("/token")
-def token(session_id: str | None = None):
-    """Mint a LiveKit access token. The room name doubles as the memory session id."""
+async def token(session_id: str | None = None):
+    """Mint a LiveKit access token and ensure the voice agent is dispatched to the room."""
     if not (settings.livekit_url and settings.livekit_api_key and settings.livekit_api_secret):
         raise HTTPException(503, "LiveKit is not configured")
     from livekit import api
@@ -71,6 +71,14 @@ def token(session_id: str | None = None):
            .with_identity(f"user-{uuid.uuid4().hex[:8]}")
            .with_grants(api.VideoGrants(room_join=True, room=room))
            .to_jwt())
+
+    # Dispatch the voice agent to this room so LiveKit Cloud immediately assigns the worker
+    try:
+        async with api.LiveKitAPI(settings.livekit_url, settings.livekit_api_key, settings.livekit_api_secret) as lk:
+            await lk.agent_dispatch.create_dispatch(api.CreateAgentDispatchRequest(room=room, agent_name=""))
+    except Exception as e:
+        logging.getLogger("tara").info("agent dispatch note for room %s: %s", room, e)
+
     return {"token": jwt, "url": settings.livekit_url, "room": room}
 
 

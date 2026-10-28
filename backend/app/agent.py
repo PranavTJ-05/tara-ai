@@ -54,11 +54,18 @@ async def entrypoint(ctx: JobContext):
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    # num_idle_processes=0 avoids pre-forking 4 heavy processes on low-memory hosts (e.g. Render free tier)
-    # port=0 avoids binding fixed port 8081 which hijacks Render's HTTP reverse proxy
+    from livekit.agents import JobExecutorType
+    from .config import settings
+
+    # JobExecutorType.THREAD executes sessions in lightweight threads rather than forking child processes
+    # which exceeds Render's 512MB RAM ceiling and causes OOM crashes.
     cli.run_app(
         WorkerOptions(
             entrypoint_fnc=entrypoint,
+            ws_url=settings.livekit_url,
+            api_key=settings.livekit_api_key,
+            api_secret=settings.livekit_api_secret,
+            job_executor_type=JobExecutorType.THREAD,
             num_idle_processes=0,
             port=0,
             load_threshold=1.0,
