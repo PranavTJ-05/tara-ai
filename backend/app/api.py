@@ -27,8 +27,13 @@ async def lifespan(_app):
 
 
 app = FastAPI(title="Tara assistant", lifespan=lifespan)
-app.add_middleware(CORSMiddleware, allow_origins=list(settings.allowed_origins),
-                   allow_methods=["GET", "POST"], allow_headers=["*"])
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_origin_regex=".*",
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 class ChatIn(BaseModel):
