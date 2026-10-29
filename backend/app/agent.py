@@ -6,13 +6,16 @@ so voice gets exactly the same guardrails, RAG and memory as the chat UI.
 import asyncio
 import json
 import logging
+import os
 
-from livekit.agents import Agent, AgentSession, JobContext, StopResponse, WorkerOptions, cli, llm
+from livekit.agents import Agent, AgentSession, JobContext, JobExecutorType, StopResponse, WorkerOptions, cli, llm
 
 from . import pipeline
+from .config import settings
 from .voice_models import build_stt, build_tts, build_vad, tts_available
 
 log = logging.getLogger("tara")
+AGENT_NAME = "tara"
 
 
 class TaraAgent(Agent):
@@ -30,7 +33,8 @@ class TaraAgent(Agent):
 
     async def on_user_turn_completed(self, turn_ctx: llm.ChatContext, new_message: llm.ChatMessage) -> None:
         text = new_message.text_content or ""
-        await self._publish({"type": "thinking"}, "state")
+        # Immediately publish transcribed text so the frontend displays STT in real-time
+        await self._publish({"type": "thinking", "text": text}, "state")
         # pipeline.answer is blocking (network); keep the audio loop responsive.
         reply = await asyncio.to_thread(pipeline.answer, self._session_id, text)
         await self._publish({"question": text, "tts": self._tts_ok, **reply.to_dict()}, "answer")
@@ -39,11 +43,26 @@ class TaraAgent(Agent):
         raise StopResponse()      # skip LiveKit's built-in LLM; our pipeline already answered
 
 
+def _server_tts() -> bool:
+    """Groq TTS + the terms probe are too heavy for Render's 512MB box. Opt in with TARA_SERVER_TTS=1."""
+    flag = os.getenv("TARA_SERVER_TTS", "").strip().lower()
+    if flag in ("0", "false", "no"):
+        return False
+    if flag in ("1", "true", "yes"):
+        return tts_available()
+    return os.getenv("TARA_EMBED_WORKER", "").strip().lower() not in ("1", "true", "yes") and tts_available()
+
+
+def prewarm(proc) -> None:
+    proc.userdata["vad"] = build_vad()
+
+
 async def entrypoint(ctx: JobContext):
     await ctx.connect()
-    tts_ok = await asyncio.to_thread(tts_available)
+    tts_ok = await asyncio.to_thread(_server_tts)
     kwargs = {"tts": build_tts()} if tts_ok else {}
-    session = AgentSession(stt=build_stt(), vad=build_vad(), **kwargs)
+    vad = ctx.proc.userdata.get("vad") or build_vad()
+    session = AgentSession(stt=build_stt(), vad=vad, **kwargs)
     agent = TaraAgent(ctx.room, session_id=ctx.room.name, tts_ok=tts_ok)
     await session.start(agent=agent, room=ctx.room)
     greeting = pipeline.get_knowledge().greeting
@@ -52,22 +71,30 @@ async def entrypoint(ctx: JobContext):
         session.say(greeting, add_to_chat_ctx=False)
 
 
+def worker_options() -> WorkerOptions:
+    # THREAD executor: forking a child process on Render's 512MB plan OOMs as soon as a voice job starts.
+    return WorkerOptions(
+        entrypoint_fnc=entrypoint,
+        prewarm_fnc=prewarm,
+        ws_url=settings.livekit_url,
+        api_key=settings.livekit_api_key,
+        api_secret=settings.livekit_api_secret,
+        agent_name=AGENT_NAME,
+        job_executor_type=JobExecutorType.THREAD,
+        num_idle_processes=0,
+        port=0,
+        load_threshold=1.0,
+    )
+
+
+async def run_embedded_worker() -> None:
+    """Share the FastAPI process so Render does not run two Python interpreters."""
+    from livekit.agents import Worker
+    worker = Worker(worker_options(), devmode=False)
+    log.info("starting in-process LiveKit worker name=%s", AGENT_NAME)
+    await worker.run(devmode=False)
+
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    from livekit.agents import JobExecutorType
-    from .config import settings
-
-    # JobExecutorType.THREAD executes sessions in lightweight threads rather than forking child processes
-    # which exceeds Render's 512MB RAM ceiling and causes OOM crashes.
-    cli.run_app(
-        WorkerOptions(
-            entrypoint_fnc=entrypoint,
-            ws_url=settings.livekit_url,
-            api_key=settings.livekit_api_key,
-            api_secret=settings.livekit_api_secret,
-            job_executor_type=JobExecutorType.THREAD,
-            num_idle_processes=0,
-            port=0,
-            load_threshold=1.0,
-        )
-    )
+    cli.run_app(worker_options())

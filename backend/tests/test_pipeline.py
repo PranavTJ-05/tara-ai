@@ -1,4 +1,6 @@
-from app import llm, pipeline, retriever
+from fastapi.testclient import TestClient
+
+from app import api as api_mod, llm, pipeline, retriever
 from app.rag.store import get_store
 from app.schema import Answer
 
@@ -130,3 +132,43 @@ def test_general_knowledge_prompt_rule(monkeypatch):
     pipeline.answer("sess-0001", "what causes migraines")
     assert "general" in calls[0]["system"] and "Retry notice" not in calls[0]["system"]
     assert pipeline.get_knowledge().general_knowledge is True      # hybrid default
+
+
+def test_voice_dispatch_uses_real_agent_name(monkeypatch):
+    captured = {}
+
+    class FakeAccessToken:
+        def __init__(self, key, secret):
+            self.key = key
+            self.secret = secret
+        def with_identity(self, identity):
+            return self
+        def with_grants(self, grants):
+            return self
+        def to_jwt(self):
+            return "fake-token"
+
+    class FakeLiveKitAPI:
+        def __init__(self, url, key, secret):
+            self.url = url
+            self.key = key
+            self.secret = secret
+            self.agent_dispatch = self
+        async def __aenter__(self):
+            return self
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+        async def create_dispatch(self, req):
+            captured["agent_name"] = req.agent_name
+            captured["room"] = req.room
+
+    import livekit.api as livekit_api
+    monkeypatch.setattr(livekit_api, "AccessToken", FakeAccessToken)
+    monkeypatch.setattr(livekit_api, "VideoGrants", lambda **kwargs: kwargs)
+    monkeypatch.setattr(livekit_api, "LiveKitAPI", FakeLiveKitAPI)
+
+    client = TestClient(api_mod.app)
+    r = client.get("/token?session_id=sess-voice")
+    assert r.status_code == 200, r.text
+    assert captured["agent_name"] == "tara"
+    assert captured["room"] == "sess-voice"

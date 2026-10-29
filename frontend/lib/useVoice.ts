@@ -103,16 +103,25 @@ export function useVoice(sessionId: string, onAnswer: (question: string, reply: 
           mic.current = meter(ctx.current, pub.track.mediaStreamTrack);
         }
       });
+      r.on(RoomEvent.TranscriptionReceived, (segments) => {
+        if (!Array.isArray(segments)) return;
+        const text = segments.map((s) => s?.text || "").filter(Boolean).join(" ").trim();
+        if (text) setHeard(text);
+      });
       r.on(RoomEvent.DataReceived, (payload, _p, _k, topic) => {
         let msg: Record<string, unknown>;
         try { msg = JSON.parse(new TextDecoder().decode(payload)); } catch { return; }
         if (topic === "state") {
-          if (msg.type === "thinking") thinking.current = true;
+          if (msg.type === "thinking") {
+            thinking.current = true;
+            if (typeof msg.text === "string" && msg.text) setHeard(msg.text);
+          }
           if (msg.type === "ready" && msg.tts === false) speak(String(msg.greeting ?? ""));
         } else if (topic === "answer") {
           const { question, tts, ...reply } = msg as { question: string; tts?: boolean } & Reply;
           setHeard(question);
           cb.current(question, reply as Reply);
+          setHeard("");
           if (tts === false) speak(reply.spoken); else setTimeout(() => { thinking.current = false; }, 12000);
         }
       });

@@ -4,7 +4,7 @@ import { AppConfig, deleteDoc, Doc, getConfig, listDocs, Reply, sendChat, sessio
 import { useVoice } from "@/lib/useVoice";
 import AnswerCard from "./AnswerCard";
 import Sidebar from "./Sidebar";
-import VoiceOverlay from "./VoiceOverlay";
+import Orb from "./Orb";
 
 type Msg = { role: "user"; text: string } | { role: "bot"; reply: Reply };
 const failure = (summary: string): Reply => ({ status: "degraded", spoken: "", summary, key_points: [], next_steps: [], sources: [], disclaimer: "", pii_redacted: [] });
@@ -20,27 +20,31 @@ export default function Chat({ embedded = false }: { embedded?: boolean }) {
   const [uploading, setUploading] = useState<string[]>([]);
   const [docError, setDocError] = useState("");
   const [menu, setMenu] = useState(false);
-  const [voiceOpen, setVoiceOpen] = useState(false);
   const end = useRef<HTMLDivElement>(null);
   const field = useRef<HTMLTextAreaElement>(null);
   const picker = useRef<HTMLInputElement>(null);
 
   const refreshDocs = useCallback(() => listDocs().then(setDocs).catch(() => {}), []);
+  const voice = useVoice(sid, (q, reply) => setMsgs((m) => [...m, { role: "user", text: q }, { role: "bot", reply }]));
+
   useEffect(() => {
     setSid(sessionId());
     getConfig().then(setCfg).catch(() => setOffline(true));
     refreshDocs();
   }, [refreshDocs]);
-  useEffect(() => { end.current?.scrollIntoView({ behavior: "smooth", block: "end" }); }, [msgs, busy]);
+  useEffect(() => { end.current?.scrollIntoView({ behavior: "smooth", block: "end" }); }, [msgs, busy, voice.heard, voice.phase]);
   useEffect(() => {                                       // auto-grow the composer
     const f = field.current; if (!f) return;
     f.style.height = "auto"; f.style.height = `${Math.min(f.scrollHeight, 160)}px`;
   }, [input]);
 
-  const voice = useVoice(sid, (q, reply) => setMsgs((m) => [...m, { role: "user", text: q }, { role: "bot", reply }]));
-
-  const openVoice = () => { setVoiceOpen(true); void voice.start(); };
-  const closeVoice = () => { setVoiceOpen(false); void voice.stop(); };
+  const toggleVoice = () => {
+    if (voice.state === "live" || voice.state === "connecting") {
+      void voice.stop();
+    } else {
+      void voice.start();
+    }
+  };
 
   async function ask(text: string) {
     text = text.trim();
@@ -100,10 +104,80 @@ export default function Chat({ embedded = false }: { embedded?: boolean }) {
             {msgs.map((m, i) => m.role === "user"
               ? <div key={i} className="msg user"><p>{m.text}</p></div>
               : <div key={i} className="msg bot"><AnswerCard r={m.reply} /></div>)}
+
+            {/* Real-time STT preview while speaking/thinking */}
+            {voice.state === "live" && voice.heard && (
+              <>
+                <div className="msg user pending">
+                  <p>{voice.heard}</p>
+                </div>
+                {voice.phase === "thinking" && (
+                  <div className="msg bot">
+                    <div className="typing"><span /><span /><span /></div>
+                  </div>
+                )}
+              </>
+            )}
+
             {busy && <div className="msg bot"><div className="typing"><span /><span /><span /></div></div>}
             <div ref={end} />
           </div>
         </section>
+
+        {/* Inline Voice Dock */}
+        {voice.state !== "idle" && (
+          <div className="voice-dock" role="region" aria-label="Active voice conversation">
+            <div className="voice-dock-left">
+              <Orb phase={voice.state === "connecting" ? "thinking" : voice.phase} level={voice.level} compact />
+              <div className="voice-dock-info">
+                <div className="voice-dock-status">
+                  <span className={`status-dot ${voice.state === "live" ? "active" : ""}`} />
+                  {voice.state === "connecting"
+                    ? "Connecting to voice…"
+                    : voice.muted
+                    ? "Microphone is muted"
+                    : voice.phase === "speaking"
+                    ? `${cfg?.assistant_name ?? "Tara"} is speaking…`
+                    : voice.phase === "thinking"
+                    ? "Thinking…"
+                    : "Listening… Speak anytime"}
+                </div>
+                <div className="voice-dock-heard">
+                  {voice.heard
+                    ? `“${voice.heard}”`
+                    : voice.state === "connecting"
+                    ? "Establishing audio connection…"
+                    : `Speak to ${cfg?.assistant_name ?? "Tara"} (or type below)`}
+                </div>
+              </div>
+            </div>
+            <div className="voice-dock-actions">
+              <button
+                type="button"
+                className={`btn-voice-tool ${voice.muted ? "muted" : ""}`}
+                onClick={voice.toggleMute}
+                disabled={voice.state !== "live"}
+                title={voice.muted ? "Turn mic on" : "Mute mic"}
+                aria-label={voice.muted ? "Turn mic on" : "Mute mic"}
+              >
+                {voice.muted ? (
+                  <svg viewBox="0 0 24 24"><path d="M3 3l18 18M9 9v3a3 3 0 005.1 2.1M15 9.3V6a3 3 0 00-5.9-.8M5 11a7 7 0 0011.2 5.6M19 11a7 7 0 01-.6 2.8M12 18v3" /></svg>
+                ) : (
+                  <svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0014 0M12 18v3" /></svg>
+                )}
+              </button>
+              <button
+                type="button"
+                className="btn-voice-tool end"
+                onClick={() => void voice.stop()}
+                title="End voice session"
+                aria-label="End voice session"
+              >
+                <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" /></svg>
+              </button>
+            </div>
+          </div>
+        )}
 
         <form className="composer" onSubmit={(e) => { e.preventDefault(); void ask(input); }}>
           <input ref={picker} type="file" hidden multiple accept=".pdf,.md,.txt"
@@ -117,9 +191,25 @@ export default function Chat({ embedded = false }: { embedded?: boolean }) {
             placeholder={cfg?.input_placeholder ?? "Type your question…"}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void ask(input); } }} />
-          <button type="button" className="talk" onClick={openVoice} disabled={!sid || offline} aria-label="Talk to the assistant" title="Talk">
-            <svg viewBox="0 0 24 24"><path d="M5 10v4M9 6v12M13 3v18M17 8v8M21 11v2" /></svg>
-            <span>Talk</span>
+          <button
+            type="button"
+            className={`talk ${voice.state !== "idle" ? "active" : ""}`}
+            onClick={toggleVoice}
+            disabled={!sid || offline}
+            aria-label={voice.state !== "idle" ? "End voice session" : "Talk to the assistant"}
+            title={voice.state !== "idle" ? "End voice session" : "Talk to the assistant"}
+          >
+            {voice.state !== "idle" ? (
+              <>
+                <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" /></svg>
+                <span>End</span>
+              </>
+            ) : (
+              <>
+                <svg viewBox="0 0 24 24"><path d="M5 10v4M9 6v12M13 3v18M17 8v8M21 11v2" /></svg>
+                <span>Talk</span>
+              </>
+            )}
           </button>
           <button className="send" disabled={busy || !input.trim()} aria-label="Send">
             <svg viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6" /></svg>
@@ -127,8 +217,6 @@ export default function Chat({ embedded = false }: { embedded?: boolean }) {
         </form>
         <p className="fine">{cfg?.disclaimer}</p>
       </main>
-
-      {voiceOpen && <VoiceOverlay voice={voice} name={cfg?.assistant_name ?? "the assistant"} onClose={closeVoice} />}
     </div>
   );
 }

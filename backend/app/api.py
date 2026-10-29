@@ -1,5 +1,7 @@
 """HTTP API for the web UI: chat, LiveKit token, config, health."""
+import asyncio
 import logging
+import os
 import re
 import threading
 import uuid
@@ -14,16 +16,35 @@ from .config import settings
 from .rag.store import get_store
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+log = logging.getLogger("tara")
+
+
 @asynccontextmanager
 async def lifespan(_app):
-    """Index anything dropped into knowledge/docs while the server was off (unchanged files are skipped)."""
+    """Index docs in the background and, on Render, run the LiveKit worker in this same process."""
     def work():
         try:
             ingest.run()
         except Exception as e:  # never block startup on indexing
-            logging.getLogger("tara").warning("startup indexing skipped: %s", e)
+            log.warning("startup indexing skipped: %s", e)
     threading.Thread(target=work, daemon=True).start()
+
+    worker_task = None
+    embed = os.getenv("TARA_EMBED_WORKER", "").strip().lower() in ("1", "true", "yes")
+    if embed and settings.livekit_url and settings.livekit_api_key and settings.livekit_api_secret:
+        from .agent import run_embedded_worker
+        worker_task = asyncio.create_task(run_embedded_worker(), name="tara-voice-worker")
+        worker_task.add_done_callback(
+            lambda t: None if t.cancelled() or t.exception() is None
+            else log.warning("voice worker stopped: %s", t.exception())
+        )
     yield
+    if worker_task:
+        worker_task.cancel()
+        try:
+            await worker_task
+        except (asyncio.CancelledError, Exception):
+            pass
 
 
 app = FastAPI(title="Tara assistant", lifespan=lifespan)
@@ -75,7 +96,7 @@ async def token(session_id: str | None = None):
     # Dispatch the voice agent to this room so LiveKit Cloud immediately assigns the worker
     try:
         async with api.LiveKitAPI(settings.livekit_url, settings.livekit_api_key, settings.livekit_api_secret) as lk:
-            await lk.agent_dispatch.create_dispatch(api.CreateAgentDispatchRequest(room=room, agent_name=""))
+            await lk.agent_dispatch.create_dispatch(api.CreateAgentDispatchRequest(room=room, agent_name="tara"))
     except Exception as e:
         logging.getLogger("tara").info("agent dispatch note for room %s: %s", room, e)
 
