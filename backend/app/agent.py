@@ -89,10 +89,10 @@ def worker_options() -> WorkerOptions:
 
 async def run_embedded_worker() -> None:
     """Share the FastAPI process so Render does not run two Python interpreters."""
-    from livekit.agents import Worker
-    worker = Worker(worker_options(), devmode=False)
+    from livekit.agents.worker import AgentServer
+    server = AgentServer.from_server_options(worker_options())
     log.info("starting in-process LiveKit worker name=%s", AGENT_NAME)
-    await worker.run(devmode=False)
+    await server.run(devmode=False)
 
 
 if __name__ == "__main__":
