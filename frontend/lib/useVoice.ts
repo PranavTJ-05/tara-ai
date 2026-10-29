@@ -94,7 +94,12 @@ export function useVoice(sessionId: string, onAnswer: (question: string, reply: 
 
       r.on(RoomEvent.TrackSubscribed, (track) => {
         if (track.kind !== Track.Kind.Audio) return;
-        document.body.appendChild(track.attach());
+        const el = track.attach();
+        el.id = `audio-${track.sid}`;
+        document.body.appendChild(el);
+        if (el instanceof HTMLAudioElement) {
+          el.play().catch(() => {});
+        }
         if (ctx.current) agent.current = meter(ctx.current, track.mediaStreamTrack);
       });
       r.on(RoomEvent.TrackUnsubscribed, (track) => track.detach().forEach((el) => el.remove()));

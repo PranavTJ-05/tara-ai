@@ -57,9 +57,9 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 .starters button { text-align: left; background: var(--paper); border: 1px solid var(--line); border-radius: 14px; padding: 11px 16px; color: var(--ink); transition: .12s; }
 .starters button:hover { border-color: var(--lagoon); transform: translateX(3px); }
 
-.msg.user { align-self: flex-end; max-width: 82%; }
-.msg.user p { margin: 0; background: var(--spruce); color: #f3fbf9; padding: 11px 17px; border-radius: 20px 20px 6px 20px; }
-.msg.bot { max-width: 100%; }
+.msg.user { align-self: flex-end; max-width: 82%; margin-left: auto; text-align: right; }
+.msg.user p { margin: 0; background: var(--spruce); color: #f3fbf9; padding: 11px 17px; border-radius: 20px 20px 6px 20px; display: inline-block; text-align: left; }
+.msg.bot { align-self: flex-start; max-width: 100%; margin-right: auto; text-align: left; }
 .answer .summary { margin: 0; font: 400 21px/1.45 var(--serif); letter-spacing: -.005em; }
 .answer .plain-text { margin: 0; font: 400 19px/1.5 var(--serif); color: #2c403e; }
 .answer.emergency { border-left: 3px solid var(--signal); padding-left: 16px; } .answer.emergency .summary { font-weight: 600; }

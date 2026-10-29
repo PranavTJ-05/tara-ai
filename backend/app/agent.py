@@ -62,8 +62,8 @@ async def entrypoint(ctx: JobContext):
     await ctx.connect()
     tts_ok = await asyncio.to_thread(_server_tts)
     kwargs = {"tts": build_tts()} if tts_ok else {}
-    # vad=None → Deepgram handles end-of-turn detection via vad_events=True on its streaming connection.
-    session = AgentSession(stt=build_stt(), **kwargs)
+    # Explicitly pass vad=None so AgentSession does NOT fall back to local silero ONNX inference
+    session = AgentSession(stt=build_stt(), vad=None, **kwargs)
     agent = TaraAgent(ctx.room, session_id=ctx.room.name, tts_ok=tts_ok)
 
     # Stream real-time user speech transcriptions directly to frontend data channel
