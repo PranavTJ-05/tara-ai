@@ -1489,6 +1489,21 @@ wheels = [
 ]
 
 [[package]]
+name = "livekit-plugins-deepgram"
+version = "1.8.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "livekit-agents", extra = ["codecs"] },
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.11.*'" },
+    { name = "numpy", version = "2.5.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/9e/08/d17a0e4964a7f0ac915fd0fb577f4d27cd46feefee10cd51a2cacecaf923/livekit_plugins_deepgram-1.8.4.tar.gz", hash = "sha256:df4af9cd54c04cee2a21077f5a62589dc4a3c419f71bf1904c3cfb164b728d12", size = 26207, upload-time = "2026-10-01T22:40:28.406Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/2d/53/d76d40b2aa107f4866a5265e1e23207dd0871bdcec6e73ea24dd1e65242a/livekit_plugins_deepgram-1.8.4-py3-none-any.whl", hash = "sha256:6c033ced9c36c16587acb2d7b313cd4a5a8bdf0bdb05b79a3d8dd999e84ac116", size = 33138, upload-time = "2026-10-01T22:40:27.08Z" },
+]
+
+[[package]]
 name = "livekit-plugins-groq"
 version = "1.8.4"
 source = { registry = "https://pypi.org/simple" }
@@ -1513,23 +1528,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/fb/29/7ae9b600f6353dbb416b8b3385e29dc6c0a7ccaf1d621b98dbbb2b8c2f5c/livekit_plugins_openai-1.8.4.tar.gz", hash = "sha256:4d59aa2dabe808b7045aae435bcd1865e7174abfe9b1fe2d48534724a7db4e65", size = 49120, upload-time = "2026-10-01T22:41:37.024Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/55/31/35a78cb1928d4c06a139faf74f0f131f75d89df35c9b32b87c4351acf769/livekit_plugins_openai-1.8.4-py3-none-any.whl", hash = "sha256:0aa2d24990f5c3d5a0e0442a586330b9dbdabfdba2e5a581e5c01604ba8c0baf", size = 56115, upload-time = "2026-10-01T22:41:35.653Z" },
-]
-
-[[package]]
-name = "livekit-plugins-silero"
-version = "1.8.4"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "livekit-agents" },
-    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.11.*'" },
-    { name = "numpy", version = "2.5.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
-    { name = "onnxruntime", version = "1.23.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "onnxruntime", version = "1.30.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/35/a5/9feda186fadf2c2fc006a70bc5c27fcd0c4e895b1c9ea0af453d2c206a12/livekit_plugins_silero-1.8.4.tar.gz", hash = "sha256:3b07e4243d99290cdcf5f71aa00ff7b8c026823a3f19a764074da90732509480", size = 1955428, upload-time = "2026-10-01T22:42:01.404Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/30/e7/47edac110e40f734f5780a001bcf7511b0291aa18b1a31ef0e94878b4234/livekit_plugins_silero-1.8.4-py3-none-any.whl", hash = "sha256:9dd0c6d3727e12ef8d01b25a5f097137ad5be0380be8d42d7e5dcc88f2f85eae", size = 3903145, upload-time = "2026-10-01T22:41:59.696Z" },
 ]
 
 [[package]]
@@ -3254,8 +3252,8 @@ dependencies = [
     { name = "httpx" },
     { name = "livekit-agents" },
     { name = "livekit-api" },
+    { name = "livekit-plugins-deepgram" },
     { name = "livekit-plugins-groq" },
-    { name = "livekit-plugins-silero" },
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.11.*'" },
     { name = "numpy", version = "2.5.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
@@ -3281,8 +3279,9 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.27" },
     { name = "livekit-agents", specifier = ">=1.0" },
     { name = "livekit-api", specifier = ">=1.0" },
+    { name = "livekit-plugins-deepgram", specifier = "==1.8.4" },
+    { name = "livekit-plugins-deepgram", specifier = ">=1.8.4" },
     { name = "livekit-plugins-groq", specifier = ">=1.8.4" },
-    { name = "livekit-plugins-silero", specifier = ">=1.0" },
     { name = "numpy", specifier = ">=1.26" },
     { name = "pydantic", specifier = ">=2.0" },
     { name = "pypdf", specifier = ">=4.0" },

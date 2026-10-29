@@ -37,6 +37,7 @@ export function useVoice(sessionId: string, onAnswer: (question: string, reply: 
   const [muted, setMuted] = useState(false);
   const [error, setError] = useState("");
   const [heard, setHeard] = useState("");
+  const [agentSpeakingText, setAgentSpeakingText] = useState("");
   const level = useRef(0);
   const room = useRef<Room | null>(null);
   const cb = useRef(onAnswer);
@@ -79,11 +80,11 @@ export function useVoice(sessionId: string, onAnswer: (question: string, reply: 
     await room.current?.disconnect();
     room.current = null;
     level.current = 0;
-    setState("idle"); setMuted(false); mutedRef.current = false; setHeard("");
+    setState("idle"); setMuted(false); mutedRef.current = false; setHeard(""); setAgentSpeakingText("");
   }, []);
 
   const start = useCallback(async () => {
-    setError(""); setState("connecting"); setPhase("listening"); setHeard("");
+    setError(""); setState("connecting"); setPhase("listening"); setHeard(""); setAgentSpeakingText("");
     try {
       const { token, url } = await getToken(sessionId);
       const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
@@ -111,17 +112,27 @@ export function useVoice(sessionId: string, onAnswer: (question: string, reply: 
       r.on(RoomEvent.DataReceived, (payload, _p, _k, topic) => {
         let msg: Record<string, unknown>;
         try { msg = JSON.parse(new TextDecoder().decode(payload)); } catch { return; }
-        if (topic === "state") {
+        if (topic === "transcript") {
+          if (typeof msg.text === "string" && msg.text.trim()) {
+            setHeard(msg.text.trim());
+          }
+        } else if (topic === "state") {
           if (msg.type === "thinking") {
             thinking.current = true;
             if (typeof msg.text === "string" && msg.text) setHeard(msg.text);
           }
-          if (msg.type === "ready" && msg.tts === false) speak(String(msg.greeting ?? ""));
+          if (msg.type === "ready") {
+            if (typeof msg.greeting === "string" && msg.greeting) {
+              setAgentSpeakingText(msg.greeting);
+            }
+            if (msg.tts === false) speak(String(msg.greeting ?? ""));
+          }
         } else if (topic === "answer") {
           const { question, tts, ...reply } = msg as { question: string; tts?: boolean } & Reply;
           setHeard(question);
           cb.current(question, reply as Reply);
           setHeard("");
+          setAgentSpeakingText(reply.spoken || reply.summary || "");
           if (tts === false) speak(reply.spoken); else setTimeout(() => { thinking.current = false; }, 12000);
         }
       });
@@ -162,5 +173,5 @@ export function useVoice(sessionId: string, onAnswer: (question: string, reply: 
   }, [setMic]);
 
   useEffect(() => () => { void stop(); }, [stop]);
-  return { state, phase, level: level as MutableRefObject<number>, muted, error, heard, start, stop, toggleMute };
+  return { state, phase, level: level as MutableRefObject<number>, muted, error, heard, agentSpeakingText, start, stop, toggleMute };
 }

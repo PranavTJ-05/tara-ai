@@ -145,6 +145,8 @@ export default function Chat({ embedded = false }: { embedded?: boolean }) {
                 <div className="voice-dock-heard">
                   {voice.heard
                     ? `“${voice.heard}”`
+                    : voice.phase === "speaking" && voice.agentSpeakingText
+                    ? `“${voice.agentSpeakingText}”`
                     : voice.state === "connecting"
                     ? "Establishing audio connection…"
                     : `Speak to ${cfg?.assistant_name ?? "Tara"} (or type below)`}

@@ -65,6 +65,19 @@ async def entrypoint(ctx: JobContext):
     # vad=None → Deepgram handles end-of-turn detection via vad_events=True on its streaming connection.
     session = AgentSession(stt=build_stt(), **kwargs)
     agent = TaraAgent(ctx.room, session_id=ctx.room.name, tts_ok=tts_ok)
+
+    # Stream real-time user speech transcriptions directly to frontend data channel
+    def on_transcription(ev):
+        if ev.transcript:
+            asyncio.create_task(
+                agent._publish(
+                    {"type": "transcript", "text": ev.transcript, "is_final": ev.is_final},
+                    "transcript"
+                )
+            )
+
+    session.on("user_input_transcribed", on_transcription)
+
     await session.start(agent=agent, room=ctx.room)
     greeting = pipeline.get_knowledge().greeting
     await agent._publish({"type": "ready", "tts": tts_ok, "greeting": greeting}, "state")

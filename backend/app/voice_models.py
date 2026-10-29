@@ -10,7 +10,7 @@ Swap any function to change provider (e.g. cartesia.TTS()).
 """
 import os
 
-from livekit.plugins import groq
+from livekit.plugins import deepgram, groq
 
 from .config import settings
 
@@ -22,11 +22,10 @@ def build_stt():
             "DEEPGRAM_API_KEY is not set. "
             "Create a free account at https://console.deepgram.com and add the key to Render env vars."
         )
-    from livekit.plugins import deepgram
     return deepgram.STT(
         model="nova-3",
         language="en-US",
-        interim_results=True,       # real-time partial transcripts → STT preview in chat
+        interim_results=True,       # real-time partial transcripts
         smart_format=True,          # punctuation + formatting
         vad_events=True,            # server-side VAD; replaces Silero on CPU
         endpointing_ms=300,         # 300ms silence → end of utterance
