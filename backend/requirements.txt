@@ -125,9 +125,9 @@ livekit==1.1.20
 livekit-agents==1.8.4
     # via
     #   tara-backend (pyproject.toml)
+    #   livekit-plugins-deepgram
     #   livekit-plugins-groq
     #   livekit-plugins-openai
-    #   livekit-plugins-silero
 livekit-api==1.2.1
     # via
     #   tara-backend (pyproject.toml)
@@ -136,12 +136,12 @@ livekit-blingfire==1.1.0
     # via livekit-agents
 livekit-local-inference==0.2.7
     # via livekit-agents
+livekit-plugins-deepgram==1.8.4
+    # via tara-backend (pyproject.toml)
 livekit-plugins-groq==1.8.4
     # via tara-backend (pyproject.toml)
 livekit-plugins-openai==1.8.4
     # via livekit-agents
-livekit-plugins-silero==1.8.4
-    # via tara-backend (pyproject.toml)
 livekit-protocol==1.1.27
     # via
     #   livekit-agents
@@ -166,12 +166,10 @@ numpy==2.5.3
     #   fastembed
     #   livekit
     #   livekit-agents
-    #   livekit-plugins-silero
+    #   livekit-plugins-deepgram
     #   onnxruntime
 onnxruntime==1.30.0
-    # via
-    #   fastembed
-    #   livekit-plugins-silero
+    # via fastembed
 openai==2.54.0
     # via
     #   livekit-agents

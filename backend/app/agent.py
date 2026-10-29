@@ -54,15 +54,16 @@ def _server_tts() -> bool:
 
 
 def prewarm(proc) -> None:
-    proc.userdata["vad"] = build_vad()
+    # Deepgram STT has built-in server-side VAD; no local ONNX model to prewarm.
+    pass
 
 
 async def entrypoint(ctx: JobContext):
     await ctx.connect()
     tts_ok = await asyncio.to_thread(_server_tts)
     kwargs = {"tts": build_tts()} if tts_ok else {}
-    vad = ctx.proc.userdata.get("vad") or build_vad()
-    session = AgentSession(stt=build_stt(), vad=vad, **kwargs)
+    # vad=None → Deepgram handles end-of-turn detection via vad_events=True on its streaming connection.
+    session = AgentSession(stt=build_stt(), **kwargs)
     agent = TaraAgent(ctx.room, session_id=ctx.room.name, tts_ok=tts_ok)
     await session.start(agent=agent, room=ctx.room)
     greeting = pipeline.get_knowledge().greeting

@@ -1,12 +1,38 @@
-"""STT / TTS / VAD for the voice worker, all on Groq (one GROQ_API_KEY, no cloud project).
-Swap any function to change provider (e.g. deepgram.STT(), cartesia.TTS())."""
-from livekit.plugins import groq, silero
+"""STT / TTS / VAD for the voice worker.
+
+STT: Deepgram nova-3 — streaming WebSocket with built-in server-side VAD
+     (vad_events=True, endpointing_ms=300).  No local ONNX inference needed,
+     so Render's 0.5 vCPU is no longer saturated.
+TTS: Groq Orpheus v1 — unchanged.
+VAD: None — Deepgram handles end-of-turn detection internally.
+
+Swap any function to change provider (e.g. cartesia.TTS()).
+"""
+import os
+
+from livekit.plugins import groq
 
 from .config import settings
 
 
 def build_stt():
-    return groq.STT(model="whisper-large-v3-turbo", language="en", api_key=settings.groq_api_key)
+    api_key = os.getenv("DEEPGRAM_API_KEY", "").strip()
+    if not api_key:
+        raise RuntimeError(
+            "DEEPGRAM_API_KEY is not set. "
+            "Create a free account at https://console.deepgram.com and add the key to Render env vars."
+        )
+    from livekit.plugins import deepgram
+    return deepgram.STT(
+        model="nova-3",
+        language="en-US",
+        interim_results=True,       # real-time partial transcripts → STT preview in chat
+        smart_format=True,          # punctuation + formatting
+        vad_events=True,            # server-side VAD; replaces Silero on CPU
+        endpointing_ms=300,         # 300ms silence → end of utterance
+        filler_words=False,
+        api_key=api_key,
+    )
 
 
 def build_tts():
@@ -14,7 +40,8 @@ def build_tts():
 
 
 def build_vad():
-    return silero.VAD.load()
+    """Deepgram handles VAD server-side; return None to skip local Silero inference."""
+    return None
 
 
 TERMS_URL = "https://console.groq.com/playground?model=canopylabs%2Forpheus-v1-english"

@@ -5,7 +5,7 @@ description = "Domain-switchable voice + chat RAG assistant (LiveKit, Supabase, 
 requires-python = ">=3.10"
 dependencies = [
   "livekit-agents>=1.0",
-  "livekit-plugins-silero>=1.0",
+  "livekit-plugins-deepgram>=1.8.4",
   "livekit-api>=1.0",
   "supabase>=2.0",
   "fastapi>=0.110",
@@ -19,6 +19,7 @@ dependencies = [
   "livekit-plugins-groq>=1.8.4",
   "fastembed>=0.8.1",
   "python-multipart>=0.0.32",
+  "livekit-plugins-deepgram==1.8.4",
 ]
 
 [dependency-groups]

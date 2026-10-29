@@ -18,8 +18,11 @@ class Settings:
     knowledge_file: Path = field(default_factory=lambda: Path(_env("KNOWLEDGE_FILE", str(ROOT / "knowledge" / "knowledge.md"))))
     docs_dir: Path = field(default_factory=lambda: Path(_env("DOCS_DIR", str(ROOT / "knowledge" / "docs"))))
 
-    # Groq: LLM + speech-to-text + text-to-speech
+    # Groq: LLM + text-to-speech
     groq_api_key: str = field(default_factory=lambda: _env("GROQ_API_KEY"))
+
+    # Deepgram: streaming STT with built-in server-side VAD (replaces Silero)
+    deepgram_api_key: str = field(default_factory=lambda: _env("DEEPGRAM_API_KEY"))
     llm_model: str = field(default_factory=lambda: _env("GROQ_MODEL", "openai/gpt-oss-120b"))
     llm_fallback_model: str = field(default_factory=lambda: _env("GROQ_FALLBACK_MODEL", "openai/gpt-oss-20b"))
 
