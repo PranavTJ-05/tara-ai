@@ -1,6 +1,7 @@
 """Vector + conversation store. Supabase (pgvector) in production; in-memory when
 SUPABASE_URL is unset, so the whole app runs and tests without any credentials."""
 from dataclasses import dataclass
+import logging
 from pathlib import Path
 from typing import Protocol
 
@@ -8,6 +9,8 @@ import numpy as np
 
 from ..config import settings
 from ..resilience import retry
+
+log = logging.getLogger("tara")
 
 
 @dataclass
@@ -171,5 +174,17 @@ _store: Store | None = None
 def get_store() -> Store:
     global _store
     if _store is None:
-        _store = SupabaseStore() if settings.supabase_url and settings.supabase_key else LocalStore(settings.local_db)
+        if settings.supabase_url and settings.supabase_key:
+            try:
+                s = SupabaseStore()
+                if s.ping():
+                    _store = s
+                else:
+                    log.warning("Supabase ping failed; using local SQLite store")
+                    _store = LocalStore(settings.local_db)
+            except Exception as e:
+                log.warning("Supabase initialization failed (%s); using local SQLite store", e)
+                _store = LocalStore(settings.local_db)
+        else:
+            _store = LocalStore(settings.local_db)
     return _store
